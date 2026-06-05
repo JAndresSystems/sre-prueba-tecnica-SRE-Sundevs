@@ -3,36 +3,34 @@
 
 ## Diagrama de Arquitectura
 
-Cliente HTTP
-│
-▼
-┌─────────────────────────────────────────────┐
-│           AWS Cloud (us-east-1)             │
-│                                             │
-│  [API Gateway HTTP API]                     │
-│   POST /process                             │
-│   Throttling: 100 req/s, burst 50           │
-│        │                                    │
-│        ▼                                    │
-│  ┌─────────────────────────────────────┐    │
-│  │           VPC                       │    │
-│  │                                     │    │
-│  │  Subnet Pública                     │    │
-│  │  └── NAT Gateway                   │    │
-│  │                                     │    │
-│  │  Subnet Privada                     │    │
-│  │  ├── Lambda (sre-prueba-processor)  │    │
-│  │  │    │                             │    │
-│  │  │    ▼                             │    │
-│  │  ├── ElastiCache Redis              │    │
-│  │  │   HIT → respuesta inmediata      │    │
-│  │  │   MISS → procesar               │    │
-│  │  │    │                             │    │
-│  │  │    ▼                             │    │
-│  │  └── S3 (via VPC Endpoint)         │    │
-│  │       results/fecha/uuid.json       │    │
-│  └─────────────────────────────────────┘    │
-└─────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    Cliente[" Cliente HTTP"] -->|POST /process| APIGW
+
+    subgraph AWS["☁️AWS Cloud (us-east-1)"]
+        APIGW[" API Gateway HTTP API\nPOST /process\nThrottling: 100 req/s, burst 50"]
+
+        subgraph VPC[" VPC"]
+            subgraph Publica["Subnet Pública"]
+                NAT["NAT Gateway"]
+            end
+
+            subgraph Privada["Subnet Privada"]
+                Lambda[" Lambda\nsre-prueba-processor"]
+                Redis["🗃️ElastiCache Redis\nTTL: 60s"]
+                S3[" S3 Bucket\nresults/fecha/uuid.json"]
+            end
+        end
+
+        APIGW --> Lambda
+        Lambda -->|buscar clave| Redis
+        Redis -->|HIT| Lambda
+        Redis -->|MISS| Lambda
+        Lambda -->|guardar resultado| S3
+        Lambda -->|escribir cache| Redis
+        S3 -.->|via VPC Endpoint| Lambda
+    end
+```
 
 ## Pre-requisitos
 
