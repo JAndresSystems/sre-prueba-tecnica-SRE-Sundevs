@@ -7,7 +7,7 @@
 flowchart TD
     Cliente[" Cliente HTTP"] -->|POST /process| APIGW
 
-    subgraph AWS["☁️AWS Cloud (us-east-1)"]
+    subgraph AWS["☁️WS Cloud (us-east-1)"]
         APIGW[" API Gateway HTTP API\nPOST /process\nThrottling: 100 req/s, burst 50"]
 
         subgraph VPC[" VPC"]
@@ -17,7 +17,7 @@ flowchart TD
 
             subgraph Privada["Subnet Privada"]
                 Lambda[" Lambda\nsre-prueba-processor"]
-                Redis["🗃️ElastiCache Redis\nTTL: 60s"]
+                Redis["lastiCache Redis\nTTL: 60s"]
                 S3[" S3 Bucket\nresults/fecha/uuid.json"]
             end
         end
