@@ -1,6 +1,3 @@
-# ─────────────────────────────────────────
-# VPC principal del proyecto
-# ─────────────────────────────────────────
 resource "aws_vpc" "main" {
   cidr_block           = "10.0.0.0/16"
   enable_dns_hostnames = true
@@ -11,9 +8,7 @@ resource "aws_vpc" "main" {
   }
 }
 
-# ─────────────────────────────────────────
-# Subnets publicas
-# ─────────────────────────────────────────
+
 resource "aws_subnet" "public_a" {
   vpc_id            = aws_vpc.main.id
   cidr_block        = "10.0.1.0/24"
@@ -34,9 +29,7 @@ resource "aws_subnet" "public_b" {
   }
 }
 
-# ─────────────────────────────────────────
-# Subnets privadas
-# ─────────────────────────────────────────
+
 resource "aws_subnet" "private_a" {
   vpc_id            = aws_vpc.main.id
   cidr_block        = "10.0.3.0/24"
@@ -57,11 +50,7 @@ resource "aws_subnet" "private_b" {
   }
 }
 
-# ─────────────────────────────────────────
-# Internet Gateway
-# permite que las subnets publicas
-# tengan acceso a internet
-# ─────────────────────────────────────────
+
 resource "aws_internet_gateway" "main" {
   vpc_id = aws_vpc.main.id
 
@@ -70,9 +59,7 @@ resource "aws_internet_gateway" "main" {
   }
 }
 
-# ─────────────────────────────────────────
-# IP publica para el NAT Gateway
-# ─────────────────────────────────────────
+
 resource "aws_eip" "nat" {
   domain = "vpc"
 
@@ -81,12 +68,7 @@ resource "aws_eip" "nat" {
   }
 }
 
-# ─────────────────────────────────────────
-# NAT Gateway
-# permite que Lambda (en subnet privada)
-# pueda salir a internet si lo necesita
-# vive en la subnet publica
-# ─────────────────────────────────────────
+
 resource "aws_nat_gateway" "main" {
   allocation_id = aws_eip.nat.id
   subnet_id     = aws_subnet.public_a.id
@@ -96,10 +78,7 @@ resource "aws_nat_gateway" "main" {
   }
 }
 
-# ─────────────────────────────────────────
-# Tabla de rutas para subnets publicas
-# dirige el trafico a internet por el IGW
-# ─────────────────────────────────────────
+
 resource "aws_route_table" "public" {
   vpc_id = aws_vpc.main.id
 
@@ -113,10 +92,7 @@ resource "aws_route_table" "public" {
   }
 }
 
-# ─────────────────────────────────────────
-# Tabla de rutas para subnets privadas
-# dirige el trafico a internet por el NAT
-# ─────────────────────────────────────────
+
 resource "aws_route_table" "private" {
   vpc_id = aws_vpc.main.id
 
@@ -130,9 +106,7 @@ resource "aws_route_table" "private" {
   }
 }
 
-# ─────────────────────────────────────────
-# Asociar tablas de rutas a las subnets
-# ─────────────────────────────────────────
+
 resource "aws_route_table_association" "public_a" {
   subnet_id      = aws_subnet.public_a.id
   route_table_id = aws_route_table.public.id
