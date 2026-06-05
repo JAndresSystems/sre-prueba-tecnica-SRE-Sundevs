@@ -1,0 +1,154 @@
+# ─────────────────────────────────────────
+# VPC principal del proyecto
+# ─────────────────────────────────────────
+resource "aws_vpc" "main" {
+  cidr_block           = "10.0.0.0/16"
+  enable_dns_hostnames = true
+  enable_dns_support   = true
+
+  tags = {
+    Name = "${var.project_name}-vpc"
+  }
+}
+
+# ─────────────────────────────────────────
+# Subnets publicas
+# ─────────────────────────────────────────
+resource "aws_subnet" "public_a" {
+  vpc_id            = aws_vpc.main.id
+  cidr_block        = "10.0.1.0/24"
+  availability_zone = "${var.aws_region}a"
+
+  tags = {
+    Name = "${var.project_name}-subnet-publica-a"
+  }
+}
+
+resource "aws_subnet" "public_b" {
+  vpc_id            = aws_vpc.main.id
+  cidr_block        = "10.0.2.0/24"
+  availability_zone = "${var.aws_region}b"
+
+  tags = {
+    Name = "${var.project_name}-subnet-publica-b"
+  }
+}
+
+# ─────────────────────────────────────────
+# Subnets privadas
+# ─────────────────────────────────────────
+resource "aws_subnet" "private_a" {
+  vpc_id            = aws_vpc.main.id
+  cidr_block        = "10.0.3.0/24"
+  availability_zone = "${var.aws_region}a"
+
+  tags = {
+    Name = "${var.project_name}-subnet-privada-a"
+  }
+}
+
+resource "aws_subnet" "private_b" {
+  vpc_id            = aws_vpc.main.id
+  cidr_block        = "10.0.4.0/24"
+  availability_zone = "${var.aws_region}b"
+
+  tags = {
+    Name = "${var.project_name}-subnet-privada-b"
+  }
+}
+
+# ─────────────────────────────────────────
+# Internet Gateway
+# permite que las subnets publicas
+# tengan acceso a internet
+# ─────────────────────────────────────────
+resource "aws_internet_gateway" "main" {
+  vpc_id = aws_vpc.main.id
+
+  tags = {
+    Name = "${var.project_name}-igw"
+  }
+}
+
+# ─────────────────────────────────────────
+# IP publica para el NAT Gateway
+# ─────────────────────────────────────────
+resource "aws_eip" "nat" {
+  domain = "vpc"
+
+  tags = {
+    Name = "${var.project_name}-nat-eip"
+  }
+}
+
+# ─────────────────────────────────────────
+# NAT Gateway
+# permite que Lambda (en subnet privada)
+# pueda salir a internet si lo necesita
+# vive en la subnet publica
+# ─────────────────────────────────────────
+resource "aws_nat_gateway" "main" {
+  allocation_id = aws_eip.nat.id
+  subnet_id     = aws_subnet.public_a.id
+
+  tags = {
+    Name = "${var.project_name}-nat"
+  }
+}
+
+# ─────────────────────────────────────────
+# Tabla de rutas para subnets publicas
+# dirige el trafico a internet por el IGW
+# ─────────────────────────────────────────
+resource "aws_route_table" "public" {
+  vpc_id = aws_vpc.main.id
+
+  route {
+    cidr_block = "0.0.0.0/0"
+    gateway_id = aws_internet_gateway.main.id
+  }
+
+  tags = {
+    Name = "${var.project_name}-rt-publica"
+  }
+}
+
+# ─────────────────────────────────────────
+# Tabla de rutas para subnets privadas
+# dirige el trafico a internet por el NAT
+# ─────────────────────────────────────────
+resource "aws_route_table" "private" {
+  vpc_id = aws_vpc.main.id
+
+  route {
+    cidr_block     = "0.0.0.0/0"
+    nat_gateway_id = aws_nat_gateway.main.id
+  }
+
+  tags = {
+    Name = "${var.project_name}-rt-privada"
+  }
+}
+
+# ─────────────────────────────────────────
+# Asociar tablas de rutas a las subnets
+# ─────────────────────────────────────────
+resource "aws_route_table_association" "public_a" {
+  subnet_id      = aws_subnet.public_a.id
+  route_table_id = aws_route_table.public.id
+}
+
+resource "aws_route_table_association" "public_b" {
+  subnet_id      = aws_subnet.public_b.id
+  route_table_id = aws_route_table.public.id
+}
+
+resource "aws_route_table_association" "private_a" {
+  subnet_id      = aws_subnet.private_a.id
+  route_table_id = aws_route_table.private.id
+}
+
+resource "aws_route_table_association" "private_b" {
+  subnet_id      = aws_subnet.private_b.id
+  route_table_id = aws_route_table.private.id
+}
